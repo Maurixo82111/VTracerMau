@@ -7,7 +7,7 @@ import uuid
 
 app = FastAPI()
 
-# Configuración de CORS total para evitar bloqueos en Shopify
+# Configuración de CORS Robusta
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -18,44 +18,41 @@ app.add_middleware(
 
 @app.post("/vectorize")
 async def vectorize_image(file: UploadFile = File(...)):
-    # Generar nombres únicos para evitar conflictos entre usuarios
     job_id = str(uuid.uuid4())
-    input_path = f"temp_{job_id}_{file.filename}"
-    output_path = f"{input_path}.svg"
+    input_path = f"in_{job_id}_{file.filename}"
+    output_path = f"out_{job_id}.svg"
     
     try:
-        # 1. Guardar archivo subido
+        # Guardar imagen temporal
         with open(input_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
 
-        # 2. Vectorización Pro (Ajustes de alta fidelidad)
+        # Parámetros de Alta Fidelidad (Estilo Premium)
         vtracer.convert_image_to_svg(
             input_path, 
             output_path,
-            mode='spline',       # Curvas suaves (estilo vectorizer.ai)
-            iteration_count=20,  # Más iteraciones = más precisión (Máximo recomendado: 50)
-            cutoff_size=1,       # Detecta hasta el detalle más mínimo
-            hierarchical='cut',  # Crea capas limpias
-            filter_speckle=2,    # Limpia ruido visual
-            corner_threshold=60  # Mejora las esquinas
+            mode='spline',       # Curvas suaves
+            iteration_count=35,  # Precisión alta
+            cutoff_size=1,       # No ignora detalles pequeños
+            hierarchical='cut',  # Capas de color limpias
+            filter_speckle=2,    # Elimina puntos de ruido
+            corner_threshold=60  # Mantiene bordes definidos
         )
 
-        # 3. Leer resultado
         with open(output_path, "r") as f:
             svg_data = f.read()
         
         return {"svg": svg_data}
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"Error interno: {e}")
+        raise HTTPException(status_code=500, detail="Error al procesar la imagen")
     
     finally:
-        # 4. Limpieza garantizada de archivos temporales
-        if os.path.exists(input_path):
-            os.remove(input_path)
-        if os.path.exists(output_path):
-            os.remove(output_path)
+        # Limpieza de archivos
+        if os.path.exists(input_path): os.remove(input_path)
+        if os.path.exists(output_path): os.remove(output_path)
 
 @app.get("/")
 def health_check():
-    return {"status": "servidor activo y listo"}
+    return {"status": "online"}
