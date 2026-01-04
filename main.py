@@ -17,7 +17,8 @@ app.add_middleware(
 
 @app.get("/health")
 def health():
-    return {"status": "ready"}
+    # Esto nos dirá qué funciones tiene la librería instalada realmente
+    return {"status": "ready", "methods": dir(vtracer)}
 
 @app.post("/vectorize")
 async def vectorize_image(file: UploadFile = File(...)):
@@ -29,8 +30,8 @@ async def vectorize_image(file: UploadFile = File(...)):
         with open(input_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
 
-        # CORRECCIÓN AQUÍ: Usamos vtracer.convert
-        vtracer.convert(
+        # Intentar el comando estándar de la librería
+        vtracer.convert_image_to_svg(
             input_path, 
             output_path,
             mode='spline',
@@ -39,13 +40,18 @@ async def vectorize_image(file: UploadFile = File(...)):
             hierarchical='cut'
         )
 
+        if not os.path.exists(output_path):
+            raise Exception("El archivo SVG no se generó correctamente.")
+
         with open(output_path, "r") as f:
             svg_data = f.read()
         
         return {"svg": svg_data}
+
     except Exception as e:
-        print(f"Error detectado: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"Error en procesamiento: {e}")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+    
     finally:
         if os.path.exists(input_path): os.remove(input_path)
         if os.path.exists(output_path): os.remove(output_path)
