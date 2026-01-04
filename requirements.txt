@@ -1,4 +1,4 @@
 fastapi
 uvicorn
-vtracer
 python-multipart
+Pillow
